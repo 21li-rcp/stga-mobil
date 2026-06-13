@@ -10,7 +10,7 @@ jobs:
       - name: Install Linux System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1-mesa-dev libgles2-mesa-dev libx14-dev ninja-build
+          sudo apt-get install -y libegl1-mesa-dev libgles2-mesa-dev libx11-dev ninja-build
 
       - name: Java JDK Setup
         uses: actions/setup-java@v4
@@ -33,7 +33,7 @@ jobs:
 
       - name: Build Android APK
         run: |
-          flet build apk --project mobil_stga.py
+          flet build apk --org com.stga --project-name stgamobil mobil_stga.py
           
       - name: Upload APK Package
         uses: actions/upload-artifact@v4
