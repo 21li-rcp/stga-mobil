@@ -1,15 +1,37 @@
 name: Build Flet APK
-on: [push]
+on: [push, workflow_dispatch]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: {python-version: '3.11'}
-      - run: pip install flet
-      - run: flet build apk --project mobil_stga.py
-      - uses: actions/upload-artifact@v4
+
+      - name: Java JDK Setup
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Android SDK Setup
+        uses: android-actions/setup-android@v3
+
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Flet and Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install flet python-docx
+
+      - name: Build Android APK
+        run: |
+          flet build apk --project mobil_stga.py
+          
+      - name: Upload APK Package
+        uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: build/apk/app-release.apk
+          path: build/apk/*.apk
