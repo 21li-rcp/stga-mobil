@@ -2,9 +2,6 @@ import flet as ft
 from datetime import datetime, timedelta
 import os
 import json
-from docx import Document
-from docx.shared import Pt, Cm
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 def main(page: ft.Page):
     # --- MOBİL EKRAN VE GENEL AYARLAR ---
@@ -429,27 +426,74 @@ def main(page: ft.Page):
     # BİLGİ PENCERELERİ (REHBER & HAKKINDA) VE DOSYA İŞLEMLERİ
     # =========================================================================
     def evrak_secim_ekrani(e):
-        def mutalaa_sec(e):
+        def mutalaa_kopyala(e):
             kapat_dialog(secim_dlg)
-            try:
-                doc = Document()
-                baslik = doc.add_paragraph()
-                baslik.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                baslik.add_run("ŞTGA HESAPLAMA VE DEĞERLENDİRME MÜTALAASI").bold = True
-                p = doc.add_paragraph()
-                p.add_run(nihai_rapor_metni)
-                doc.save("STGA_Mobil_Mutalaasi.docx")
-                goster_mesaj("Başarılı", "Mütalaa, program klasörüne 'STGA_Mobil_Mutalaasi.docx' adıyla kaydedildi.", ft.Colors.GREEN_400)
-            except Exception as ex:
-                goster_mesaj("Hata", f"Belge oluşturulamadı: {ex}", ft.Colors.RED_400)
+            tam_metin = "ŞTGA HESAPLAMA VE DEĞERLENDİRME MÜTALAASI\n\n" + nihai_rapor_metni
+            page.set_clipboard(tam_metin)
+            goster_mesaj("Başarılı", "Mütalaa panoya kopyalandı! İstediğiniz yere (WhatsApp, UYAP) yapıştırabilirsiniz.", ft.Colors.GREEN_400)
+
+        def talepname_kopyala(e):
+            kapat_dialog(secim_dlg)
+            stt_val = txt_stt.value.strip()
+            htt_val = txt_htt.value.strip()
+            suclar = gecerli_suclar_filtreli
+            coklu_suc = len(suclar) > 1
+            
+            talepname_metni = "İNFAZ HAKİMLİĞİNE\n\n"
+            talepname_metni += f"Hükümlü [HÜKÜMLÜ ADI SOYADI GİRİNİZ], ŞTT VEREN MAHKEME [KARAR BİLGİSİ GİRİNİZ] D. İş Sayılı kararı ile {stt_val} tarihinde koşullu salıverilme kararı verilmiş, bihakkın tahliye tarihinin ise {htt_val} olduğu belirlenmiştir.\n\n"
+            
+            if not coklu_suc:
+                talepname_metni += f"Hükümlü koşullu salıverilme tarihinden sonra, bihakkın tahliye tarihinden önce {suclar[0]['tarih'].strftime('%d.%m.%Y')} tarihinde işlemiş olduğu suç nedeniyle [YENİ İLAM BİLGİSİ GİRİNİZ] ilamı ile verilen {yeni_ceza_miktari_metni} HAPİS cezası ile cezalandırılmış ve bu ceza kesinleşmiştir.\n\n"
+            else:
+                talepname_metni += "Hükümlü koşullu salıverilme tarihinden sonra, bihakkın tahliye tarihinden önce sırasıyla; "
+                for i, suc in enumerate(suclar):
+                    cg = suc["toplam_gun"]
+                    c_y, c_a, c_g = cg // 365, (cg % 365) // 30, (cg % 365) % 30
+                    parcalar = []
+                    if c_y > 0: parcalar.append(f"{c_y} YIL")
+                    if c_a > 0: parcalar.append(f"{c_a} AY")
+                    if c_g > 0: parcalar.append(f"{c_g} GÜN")
+                    c_metin = " ".join(parcalar) if parcalar else "0 GÜN"
+                    
+                    talepname_metni += f"{suc['tarih'].strftime('%d.%m.%Y')} tarihinde işlemiş olduğu suç nedeniyle [YENİ İLAM BİLGİSİ GİRİNİZ] ilamı ile verilen {c_metin} HAPİS"
+                    if i == len(suclar) - 2:
+                        talepname_metni += " ve "
+                    elif i < len(suclar) - 2:
+                        talepname_metni += ", "
+                talepname_metni += " cezaları ile cezalandırılmış ve bu cezalar kesinleşmiştir.\n\n"
+                
+            durum_metni = "fazla" if tavan_asildi_mi else "daha az"
+            islemis_oldugu = "işlemiş olduğu suçların" if coklu_suc else "işlemiş olduğu cezanın"
+            talepname_metni += f"15/04/2020 tarihli resmi gazetede yayınlanan 7242 sayılı Kanunun 48. Maddesinde yapılan değişiklik ile CGTİHK'nın 107. maddesinde “kalan cezasının aynen,” ibaresi “başlamak ve hak ederek tahliye tarihini geçmemek koşuluyla sonraki işlediği her bir suç için verilen hapis cezasının iki katı sürenin,” şeklinde değişiklik yapıldığı, ancak hükümlünün {islemis_oldugu} iki katı sürenin bihakkın tahliye tarihinden {durum_metni} olduğu anlaşılmıştır.\n\n"
+            
+            suc_sebebiyle = "suçlar sebebiyle" if coklu_suc else "suç sebebiyle"
+            if tavan_asildi_mi:
+                talepname_metni += f"Hükümlünün koşullu salıverilme tarihinden sonra bihakkın tahliye tarihinden önce işlemiş olduğu {suc_sebebiyle} koşullu salıverilme kararının geri alınması ve {ilk_suc_tarihi_str} tarihi ile {htt_val} tarihleri arasındaki {kesinlesen_gun} günlük sürenin aynen infazına karar verilmesi talep ve mütalaa olunur."
+            else:
+                if coklu_suc:
+                    talepname_metni += f"Hükümlünün koşullu salıverilme tarihinden sonra bihakkın tahliye tarihinden önce işlemiş olduğu {suc_sebebiyle} koşullu salıverilme kararının geri alınması ve işlenen bu suçların yasa gereği hesaplanan iki katı olan {kesinlesen_gun} günlük sürenin aynen infazına karar verilmesi talep ve mütalaa olunur."
+                else:
+                    talepname_metni += f"Hükümlünün koşullu salıverilme tarihinden sonra bihakkın tahliye tarihinden önce işlemiş olduğu {suc_sebebiyle} koşullu salıverilme kararının geri alınması ve işlemiş olduğu suç miktarı olan {yeni_ceza_miktari_metni} ({yeni_ceza_gun} Gün) sürenin iki katı olan {kesinlesen_gun} günlük sürenin aynen infazına karar verilmesi talep ve mütalaa olunur."
+            
+            page.set_clipboard(talepname_metni)
+            bilgi_metni = "Talepname metni başarıyla panoya kopyalandı!\n\n💡 ŞABLON TERCİHİ:\n"
+            bilgi_metni += "Tavan AŞILDIĞI için 'İlk Suçtan HTT'ye kadar' şablonu kullanıldı." if tavan_asildi_mi else "Tavan AŞILMADIĞI için '2 katının aynen infazı' şablonu kullanıldı."
+            goster_mesaj("İşlem Başarılı", bilgi_metni, ft.Colors.GREEN_400)
+
+        butonlar = [
+            ft.ElevatedButton("📋 Gerekçeli ŞTGA Mütalaası Kopyala", on_click=mutalaa_kopyala, bgcolor=ft.Colors.GREEN_700, color=ft.Colors.WHITE)
+        ]
+        
+        if sartlar_olustu_mu:
+            butonlar.append(ft.ElevatedButton("📋 İnfaz Hakimliği Talepnamesi Kopyala", on_click=talepname_kopyala, bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE))
+        else:
+            butonlar.append(ft.Text("⚠ Şartlar oluşmadığı için Talepname kilitli.", color=ft.Colors.RED_400, size=12))
+
+        butonlar.append(ft.ElevatedButton("İptal / Kapat", on_click=lambda e: kapat_dialog(secim_dlg), bgcolor=ft.Colors.GREY_800, color=ft.Colors.WHITE))
 
         secim_dlg = ft.AlertDialog(
-            title=ft.Text("📄 Evrak Çıktısı Seçimi"),
-            content=ft.Text("Hangi evrakı oluşturmak istiyorsunuz?"),
-            actions=[
-                ft.ElevatedButton("1- Gerekçeli ŞTGA Mütalaası", on_click=mutalaa_sec, bgcolor=ft.Colors.GREEN_700, color=ft.Colors.WHITE),
-                ft.ElevatedButton("Kapat", on_click=lambda e: kapat_dialog(secim_dlg))
-            ]
+            title=ft.Text("📋 Metni Kopyala"),
+            content=ft.Column(butonlar, tight=True, spacing=10)
         )
         page.overlay.append(secim_dlg)
         secim_dlg.open = True
@@ -618,7 +662,7 @@ def main(page: ft.Page):
     btn_temizle = ft.ElevatedButton("🧹 Temizle", bgcolor=ft.Colors.RED_700, color=ft.Colors.WHITE, height=40, expand=True)
     btn_temizle.on_click = ekrani_temizle_tetikle
     
-    btn_kaydet = ft.ElevatedButton("📄 Word Çıktısı", bgcolor=ft.Colors.GREEN_700, color=ft.Colors.WHITE, height=40, expand=True, disabled=True)
+    btn_kaydet = ft.ElevatedButton("📋 Sonucu Kopyala", bgcolor=ft.Colors.GREEN_700, color=ft.Colors.WHITE, height=40, expand=True, disabled=True)
     btn_kaydet.on_click = evrak_secim_ekrani
     
     btn_disa_aktar = ft.IconButton(icon=ft.Icons.UPLOAD_FILE, tooltip="Dışa Aktar", icon_color=ft.Colors.PURPLE_300)
