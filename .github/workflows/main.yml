@@ -5,38 +5,35 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Kodlari Cek
+        uses: actions/checkout@v4
 
-      - name: Install Linux System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libegl1-mesa-dev libgles2-mesa-dev libx11-dev ninja-build
-
-      - name: Java JDK Setup
+      - name: Java Kurulumu
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Android SDK Setup
-        uses: android-actions/setup-android@v3
-
-      - name: Python Setup
+      - name: Python Kurulumu
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Flet and Dependencies
+      - name: Kutuphaneleri Kur
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install flet python-docx
 
-      - name: Build Android APK
+      - name: Flet Icin Dosya Adini Duzelt
         run: |
-          flet build apk --org com.stga --project-name stgamobil mobil_stga.py
-          
-      - name: Upload APK Package
+          mv mobil_stga.py main.py
+
+      - name: APK Derlemeyi Baslat
+        run: |
+          flet build apk
+
+      - name: APK Dosyasini Sisteme Yukle
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: STGA-Mobil-Uygulamasi
           path: build/apk/*.apk
