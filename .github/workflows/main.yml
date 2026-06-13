@@ -27,6 +27,7 @@ jobs:
       - name: Flet Icin Dosya Adini Duzelt
         run: |
           mv mobil_stga.py main.py
+          echo "flet" > requirements.txt
 
       - name: APK Derlemeyi Baslat
         run: |
